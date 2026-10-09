@@ -47,9 +47,12 @@ en el `.env` local (el `.env` nunca se commitea).
 mongosh "mongodb://localhost:27017/automoviles" --file DB/01_seed_automoviles.js
 ```
 
-- `DB/01_seed_automoviles.js` — 10 vehículos + índice único `nombre` (no modificar).
-- `DB/02_consultas_demo.txt` — consultas mongosh para el video (punto 2 del PDF).
+- `DB/01_seed_automoviles.js` — crea BD + colección con validador, 10 vehículos,
+  índice único `nombre` (no modificar; idempotente).
+- `DB/02_consultas_demo.txt` — guía de pruebas del **Integrante 1** (C1 + C4).
 - `DB/03_dato_prueba_c3.txt` — dato C3 en 3 lenguajes (mongosh + redis-cli + HTTP).
+- `DB/04_guia_integrante2.txt` — guía del **Integrante 2** (Mongo + C2 + invalidación).
+- `DB/05_guia_integrante3.txt` — guía del **Integrante 3** (CRUD + C3 + conclusiones).
 
 ## 5. API
 

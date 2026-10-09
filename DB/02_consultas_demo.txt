@@ -1,55 +1,94 @@
 // ============================================================
-// DB/02_consultas_demo.txt — LENGUAJE: MongoDB (mongosh / MQL)
-// Consultas básicas para la sustentación (puntos 2 y 3 del PDF).
-// USO: copiar/pegar cada bloque en mongosh, o ejecutar todo con:
-//   mongosh "mongodb://localhost:27017/automoviles" --file DB/02_consultas_demo.txt
-// REGLA: el seed de 10 vehículos NO se altera; el bloque 5-7 usa un
-// documento temporal "PruebaDemo" que se crea y se borra solo.
+// DB/02_guia_integrante1.txt — GUÍA DE PRUEBAS: INTEGRANTE 1 (TÚ)
+// Bloques: presentación (0:00-1:00) + C1 Avión 15s (4:30-5:50)
+//          + C4 Camión NO_CACHE (5:50-6:50).
+// Cubre: arrancar el proyecto, rutas, Redis, Postman y mongosh.
+// Los requests Postman citados son de postman/taller_vehiculos.json.
 // ============================================================
 
-// ---- 1) Ver todos (equivale a GET /vehiculos) ----
-db.vehiculos.find({}, { _id: 0 }).sort({ nombre: 1 }).toArray();
+//////////////////////////////////////////////
+// PASO 0 — Arrancar todo (si ya corre, saltar)
+//////////////////////////////////////////////
+// PowerShell (proyecto: taller_Redis_Programacion):
+//   wsl sudo service redis-server start
+//   wsl redis-cli ping
+//     -> ESPERADO: PONG
+//   .\venv\Scripts\Activate.ps1
+//   python app.py
+//     -> ESPERADO: Running on http://127.0.0.1:5000
+//
+// Dejar seed limpio (10 docs) y Redis sin claves tuyas:
+//   mongosh "mongodb://localhost:27017/automoviles" --file DB/01_seed_automoviles.js
+//     -> ESPERADO: Total documentos: 10
+//   wsl redis-cli DEL "vehiculo:Avión"
+//     -> ESPERADO: 0 o 1
 
-// ---- 2) Consultar uno por nombre (equivale a GET /vehiculos/<nombre>) ----
-// C1 (caché 15s, demo Integrante 1):
-db.vehiculos.findOne({ nombre: "Avión" }, { _id: 0 });
-// C4 (NO_CACHE, demo Integrante 1):
-db.vehiculos.findOne({ nombre: "Automóvil" }, { _id: 0 });
+//////////////////////////////////////////////
+// PASO 1 — Presentación: GET /health (0:00-1:00)
+//////////////////////////////////////////////
+// Postman request "00 GET health":
+//   GET http://localhost:5000/health
+//   -> ESPERADO 200:
+//   {"status":"ok","mongo":"up","redis":"up","db":"automoviles.vehiculos"}
+// QUÉ DECIR: "Flask expone la API, MongoDB guarda automoviles.vehiculos
+// (10 vehículos, índice único en nombre) y Redis en WSL es el caché.
+// Cada GET a un vehículo responde fuente mongodb|redis y ttl_segundos.
+// El TTL depende de len(categoria): <=5=15s, 6-10=20s, 11-20=40s, >20=no guarda."
 
-// ---- 3) Conteo por categoría (evidencia de estructura, punto 2 del video) ----
-db.vehiculos.aggregate([
-  { $group: { _id: "$categoria", total: { $sum: 1 }, peso_promedio_t: { $avg: "$peso_toneladas" } } },
-  { $sort: { _id: 1 } }
-]).toArray();
+//////////////////////////////////////////////
+// PASO 2 — C1: GET Avión, 1er intento = MISS (4:30-5:50)
+//////////////////////////////////////////////
+// Postman request "07 GET Avion 1er -> mongodb":
+//   GET http://localhost:5000/vehiculos/Avión
+//   -> ESPERADO 200, tests en verde (fuente mongodb, ttl_segundos 15):
+//   {"nombre":"Avión","categoria":"Aéreo",...,"fuente":"mongodb","ttl_segundos":15}
+// QUÉ DECIR: "Aéreo mide 5 caracteres, banda de 15 segundos. Primer GET:
+// viene de Mongo y la API lo guarda en Redis."
 
-// ---- 4) Matriz de caché por CATEGORÍA (lógica espejo de la API) ----
-// Campo identificador: categoria. Bandas: <=5 -> 15s | 6-10 -> 20s |
-// 11-20 -> 40s | >20 -> 0 = NO_CACHE (prioritaria).
-db.vehiculos.aggregate([
-  { $project: {
-      _id: 0, nombre: 1, categoria: 1,
-      len_categoria: { $strLenCP: "$categoria" },
-      ttl_esperado_s: { $switch: {
-        branches: [
-          { case: { $gt: [{ $strLenCP: "$categoria" }, 20] }, then: 0 },
-          { case: { $lte: [{ $strLenCP: "$categoria" }, 5] }, then: 15 },
-          { case: { $lte: [{ $strLenCP: "$categoria" }, 10] }, then: 20 }
-        ],
-        default: 40
-      } }
-  } },
-  { $sort: { ttl_esperado_s: 1, nombre: 1 } }
-]).toArray();
-// Esperado con seed intacto: 15s Avión/Helicóptero | 20s Barco/Lancha/Cohete |
-// 0 (NO_CACHE) Automóvil/Motocicleta/Camión/Bicicleta/Monopatín.
-// La banda 40s (11-20) no existe en el seed -> ver DB/03_dato_prueba_c3.txt.
+//////////////////////////////////////////////
+// PASO 3 — C1: comprobar la clave en Redis
+//////////////////////////////////////////////
+// WSL:
+//   wsl redis-cli TTL "vehiculo:Avión"
+//     -> ESPERADO: 15, 14 o 13 (corre el tiempo)
+//   wsl redis-cli GET "vehiculo:Avión"
+//     -> ESPERADO: JSON del Avión
+// QUÉ DECIR: "La clave vehiculo:Avión existe con TTL 15: almacenamiento demostrado."
 
-// ---- 5) POST equivalente: registrar (documento TEMPORAL, se borra en 7) ----
-db.vehiculos.insertOne({ nombre: "PruebaDemo", categoria: "Aéreo", peso_toneladas: 1, descripcion: "Avión de prueba." });
+//////////////////////////////////////////////
+// PASO 4 — C1: 2do GET = HIT
+//////////////////////////////////////////////
+// Postman request "08 GET Avion 2do -> redis":
+//   GET http://localhost:5000/vehiculos/Avión
+//   -> ESPERADO 200 (fuente redis, ttl_segundos entre 1 y 15)
+// QUÉ DECIR: "Segundo GET inmediato: fuente redis, consulta desde caché demostrada."
 
-// ---- 6) PUT equivalente: actualizar ----
-db.vehiculos.updateOne({ nombre: "PruebaDemo" }, { $set: { peso_toneladas: 2 } });
+//////////////////////////////////////////////
+// PASO 5 — C1: expiración real (15s en cámara)
+//////////////////////////////////////////////
+// Esperar 16 segundos (cronómetro visible). Mientras, decir:
+//   "La banda C1 son 15 segundos; dejamos correr el reloj."
+// Postman: repetir "07 GET Avion 1er"
+//   -> ESPERADO 200 (fuente mongodb otra vez)
+// QUÉ DECIR: "Expiró y volvió a MongoDB: expiración automática demostrada."
+// Limpieza (opcional, deja todo ordenado):
+//   wsl redis-cli DEL "vehiculo:Avión"
 
-// ---- 7) DELETE equivalente: eliminar + verificación de seed intacto ----
-db.vehiculos.deleteOne({ nombre: "PruebaDemo" });
-db.vehiculos.countDocuments(); // debe volver a 10
+//////////////////////////////////////////////
+// PASO 6 — C4: GET Camión, nunca se guarda (5:50-6:50)
+//////////////////////////////////////////////
+// Postman request "09 GET Camion 1er -> mongodb":
+//   GET http://localhost:5000/vehiculos/Camión
+//   -> ESPERADO 200 (fuente mongodb, ttl_segundos 0)
+// QUÉ DECIR: "Terrestre (motorizado) mide 22 caracteres: supera 20, la regla
+// prioritaria dice no almacenar."
+//
+// Postman request "10 GET Camion 2do -> mongodb otra vez":
+//   GET http://localhost:5000/vehiculos/Camión
+//   -> ESPERADO 200 (fuente mongodb otra vez)
+// WSL:
+//   wsl redis-cli GET "vehiculo:Camión"
+//     -> ESPERADO: (nil) — la clave jamás existió
+// QUÉ DECIR: "Dos GET seguidos desde Mongo y nada en Redis: la prioridad funciona."
+//
+// FIN DE TU PARTE. Siguiente: Integrante 2 (ver DB/04_guia_integrante2.txt).

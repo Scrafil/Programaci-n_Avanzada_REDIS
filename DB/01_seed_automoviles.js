@@ -1,17 +1,37 @@
 // ============================================================
-// DB/01_seed_automoviles.js
-// Crea la BD `automoviles` y la colección `vehiculos` con los
-// 10 documentos de la imagen de referencia.
-// Ejecución manual (elige UNA):
-//   mongosh --file DB/01_seed_automoviles.js
+// DB/01_seed_automoviles.js — CREACIÓN COMPLETA de la BD en MongoDB
+// Crea la BD `automoviles`, la colección `vehiculos` (con validador de
+// esquema), inserta los 10 vehículos de la imagen y el índice único.
+// Es idempotente: borra la colección y la reconstruye cada vez.
+// Ejecutar con:
 //   mongosh "mongodb://localhost:27017/automoviles" --file DB/01_seed_automoviles.js
 // ============================================================
 const DB_NAME = "automoviles";
 const COLL = "vehiculos";
+const dbx = db.getSiblingDB(DB_NAME);
 
-db.getSiblingDB(DB_NAME).getCollection(COLL).drop();
+// ---- 1) Limpieza (la BD se crea sola al insertar el primer documento) ----
+dbx.getCollection(COLL).drop();
 
-const vehiculos = [
+// ---- 2) Creación de la colección con validador (estructura exigida) ----
+dbx.createCollection(COLL, {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["nombre", "categoria", "peso_toneladas", "descripcion"],
+      properties: {
+        nombre: { bsonType: "string", minLength: 1 },
+        categoria: { bsonType: "string", minLength: 1 },
+        peso_toneladas: { bsonType: "number", minimum: 0 },
+        descripcion: { bsonType: "string", minLength: 1 }
+      }
+    }
+  }
+});
+print("OK: colección automoviles.vehiculos creada con validador");
+
+// ---- 3) Seed: los 10 vehículos de la imagen de referencia ----
+dbx.getCollection(COLL).insertMany([
   { nombre: "Automóvil",   categoria: "Terrestre (motorizado)",    peso_toneladas: 1.5,   descripcion: "Vehículo común para transporte personal." },
   { nombre: "Motocicleta", categoria: "Terrestre (motorizado)",    peso_toneladas: 0.2,   descripcion: "Vehículo de dos ruedas impulsado por motor." },
   { nombre: "Camión",      categoria: "Terrestre (motorizado)",    peso_toneladas: 10,    descripcion: "Vehículo grande para carga pesada." },
@@ -22,14 +42,13 @@ const vehiculos = [
   { nombre: "Avión",       categoria: "Aéreo",                     peso_toneladas: 70,    descripcion: "Aeronave comercial para transporte de pasajeros." },
   { nombre: "Helicóptero", categoria: "Aéreo",                     peso_toneladas: 3,     descripcion: "Aeronave de despegue vertical con rotores." },
   { nombre: "Cohete",      categoria: "Espacial",                 peso_toneladas: 500,   descripcion: "Vehículo propulsado para viajes espaciales." }
-];
+]);
+print("OK: 10 vehículos insertados");
 
-const res = db.getSiblingDB(DB_NAME).getCollection(COLL).insertMany(vehiculos);
-print(`OK: insertados ${res.insertedCount} vehículos en ${DB_NAME}.${COLL}`);
-
-// Índice único sobre el campo identificador (el caché usa este campo como clave)
-db.getSiblingDB(DB_NAME).getCollection(COLL).createIndex({ nombre: 1 }, { unique: true });
+// ---- 4) Índice único sobre el campo de búsqueda (clave de caché) ----
+dbx.getCollection(COLL).createIndex({ nombre: 1 }, { unique: true });
 print("OK: índice único { nombre: 1 } creado");
 
-// Verificación rápida
-printjson(db.getSiblingDB(DB_NAME).getCollection(COLL).find({}, { _id: 0 }).sort({ nombre: 1 }).toArray());
+// ---- 5) Verificación final ----
+print("Total documentos: " + dbx.getCollection(COLL).countDocuments());
+printjson(dbx.getCollection(COLL).findOne({ nombre: "Avión" }, { _id: 0 }));

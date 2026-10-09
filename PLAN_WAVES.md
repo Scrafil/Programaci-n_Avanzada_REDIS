@@ -74,8 +74,8 @@ las cuatro condiciones y solo la de 40 segundos requiere un dato adicional"*.
 | Bloque (min) | Dueño | Tema | Demo en vivo |
 |---|---|---|---|
 | 0:00–1:00 | **TÚ (Int. 1)** | Presentación, objetivo, arquitectura (Flask→Mongo/Redis WSL) | Diagrama / `/health` |
-| 1:00–2:30 | Int. 2 | Estructura MongoDB + seed | `mongosh` + `DB/02` consultar/agregar |
-| 2:30–4:30 | Int. 3 | CRUD completo en Postman | POST→GET→PUT→DELETE + `DB/02` |
+| 1:00–2:30 | Int. 2 | Estructura MongoDB + seed | `mongosh` + `DB/04` (agregaciones y matriz) |
+| 2:30–4:30 | Int. 3 | CRUD completo en Postman | POST→GET→PUT→DELETE + `DB/05` |
 | 4:30–5:50 | **TÚ (Int. 1)** | Caché **C1** (`Aéreo`=5 → 15s) + expiración | `GET /vehiculos/Avión` ×2 (mongodb→redis), esperar 15s, vuelve a mongodb |
 | 5:50–6:50 | **TÚ (Int. 1)** | Caché **C4** (`Terrestre…`=22/25 → NO guarda, prioritaria) | `GET /vehiculos/Camión` ×2: siempre `mongodb`; explicar por qué |
 | 6:50–8:00 | Int. 2 | Caché **C2** (`Acuático`/`Espacial`=8 → 20s) + **invalidación PUT/DELETE** | `GET Barco`, `PUT`, `GET` (miss), `TTL` en Redis |
@@ -130,8 +130,8 @@ Tareas:
    compose es alternativa) con volúmenes y puertos 27017/6379.
 5. .gitignore: venv/, .env, __pycache__/.
 6. README.md borrador: venv+pip, cómo arrancar Redis WSL, Docker vs Atlas,
-   seed y demos (`mongosh --file DB/01_seed_automoviles.js`, luego copiar/pegar
-   `DB/02_consultas_demo.txt` y Parte A de `DB/03_dato_prueba_c3.txt`) y `python app.py`.
+   seed y demos (`mongosh --file DB/01_seed_automoviles.js`, guías
+   `DB/02`, `DB/04`, `DB/05` por integrante y Parte A de `DB/03_dato_prueba_c3.txt`) y `python app.py`.
 Hecho cuando: `pip install -r requirements.txt` OK, `python app.py` levanta y
 /health responde JSON con redis=up (WSL); `docker-compose config` válido.
 Prohíbo: tocar DB/, .env, crear endpoints CRUD o lógica Redis.
