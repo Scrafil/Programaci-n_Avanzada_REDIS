@@ -360,10 +360,10 @@
           }
         ],
         "url": "{{base_url}}/vehiculos/Barco",
-        "description": "Int.2 invalidacion: actualiza peso 2 -> 2.5 y hace DEL vehiculo:Barco en Redis.",
+        "description": "Int.2 invalidacion: actualiza peso 500 -> 501 y hace DEL vehiculo:Barco en Redis.",
         "body": {
           "mode": "raw",
-          "raw": "{\"categoria\": \"Acuático\", \"peso_toneladas\": 2.5, \"descripcion\": \"Embarcación pequeña usada en ríos o mares.\"}",
+          "raw": "{\"categoria\": \"Acuático\", \"peso_toneladas\": 501, \"descripcion\": \"Embarcación grande usada para transporte marítimo.\"}",
           "options": {
             "raw": {
               "language": "json"
@@ -389,7 +389,7 @@
         "method": "GET",
         "header": [],
         "url": "{{base_url}}/vehiculos/Barco",
-        "description": "Int.2: tras el PUT el GET es MISS (mongodb) con el peso nuevo 2.5 = cache invalidado."
+        "description": "Int.2: tras el PUT el GET es MISS (mongodb) con el peso nuevo 501 = cache invalidado."
       },
       "event": [
         {
@@ -400,7 +400,7 @@
               "pm.test(\"invalidado: mongodb con dato nuevo\", function () {",
               "    var json = pm.response.json();",
               "    pm.expect(json.fuente).to.eql(\"mongodb\");",
-              "    pm.expect(json.peso_toneladas).to.eql(2.5);",
+              "    pm.expect(json.peso_toneladas).to.eql(501);",
               "});"
             ],
             "type": "text/javascript"
@@ -419,10 +419,10 @@
           }
         ],
         "url": "{{base_url}}/vehiculos/Barco",
-        "description": "Int.2: devuelve peso a 2 para dejar el seed intacto. Sin test estricto.",
+        "description": "Int.2: devuelve peso a 500 y descripcion original para dejar el seed intacto. Sin test estricto.",
         "body": {
           "mode": "raw",
-          "raw": "{\"categoria\": \"Acuático\", \"peso_toneladas\": 2, \"descripcion\": \"Embarcación pequeña usada en ríos o mares.\"}",
+          "raw": "{\"categoria\": \"Acuático\", \"peso_toneladas\": 500, \"descripcion\": \"Embarcación grande usada para transporte marítimo.\"}",
           "options": {
             "raw": {
               "language": "json"

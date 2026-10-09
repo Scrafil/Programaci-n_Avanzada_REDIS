@@ -62,9 +62,9 @@ class TestCacheVive(unittest.TestCase):
         from cache import get_client, clave
         self.c.get("/vehiculos/Barco")
         self.assertIsNotNone(get_client().get(clave("Barco")))
-        self.c.put("/vehiculos/Barco", json={"peso_toneladas": 2.5})
+        self.c.put("/vehiculos/Barco", json={"peso_toneladas": 501})
         self.assertIsNone(get_client().get(clave("Barco")))
-        self.c.put("/vehiculos/Barco", json={"peso_toneladas": 2})  # restaura seed
+        self.c.put("/vehiculos/Barco", json={"peso_toneladas": 500})  # restaura seed
 
     @unittest.skipUnless(os.getenv("E2E_SLOW") == "1", "expiración real (16s)")
     def test_expiracion_real_c1(self):
