@@ -60,10 +60,10 @@ Longitudes verificadas (Python + `$strLenCP`):
 | `Espacial` | 8 | **20s (C2)** | Cohete |
 | `Terrestre (motorizado)` | 22 | **NO_CACHE (C4)** | Automóvil, Motocicleta, Camión |
 | `Terrestre (no motorizado)` | 25 | **NO_CACHE (C4)** | Bicicleta, Monopatín |
-| `Acuático ligero` (solo `DB/03`) | 15 | **40s (C3)** | Hidroavión (dato de prueba) |
+| `Acuático ligero` (solo `DB/03_dato_prueba_c3.md`) | 15 | **40s (C3)** | Hidroavión (dato de prueba) |
 
 La condición C3 (11–20 chars) no tiene ejemplo en el seed: se demuestra con **un solo**
-documento de prueba (`DB/03_dato_prueba_c3.js`). Frase para el video: *"Tomamos la
+documento de prueba (`DB/03_dato_prueba_c3.md`). Frase para el video: *"Tomamos la
 categoría como campo identificador; así, los datos reales de la tabla cubren tres de
 las cuatro condiciones y solo la de 40 segundos requiere un dato adicional"*.
 
@@ -89,7 +89,7 @@ Cada uno **explica y demuestra** sección distinta (exigencia del PDF §5).
 ## 2. Mapa de Waves (orden + paralelismo)
 
 ```
-Wave 0  ✅ HECHO                  .env(.example), DB/01 .js + DB/02 y DB/03 .txt, este plan. Redis WSL verificado (PONG).
+Wave 0  ✅ HECHO                  .env(.example), DB/01 .js + guías DB/02–05 .md, este plan. Redis WSL verificado (PONG).
 Wave 1  🔵 PARALELO (3 agentes)     Infra+esqueleto · Contrato Postman · Verificación BD
 Wave 2  🟣 PARALELO (2 agentes)     API CRUD · Capa caché Redis   (propiedad de archivos estricta)
 Wave 3  🟢 SECUENCIAL (1-2 agentes) Integración E2E + QA TTL reales + README + GitHub
@@ -131,7 +131,8 @@ Tareas:
 5. .gitignore: venv/, .env, __pycache__/.
 6. README.md borrador: venv+pip, cómo arrancar Redis WSL, Docker vs Atlas,
    seed y demos (`mongosh --file DB/01_seed_automoviles.js`, guías
-   `DB/02`, `DB/04`, `DB/05` por integrante y Parte A de `DB/03_dato_prueba_c3.txt`) y `python app.py`.
+   `DB/02_guia_integrante1.md`, `DB/04_guia_integrante2.md`, `DB/05_guia_integrante3.md`
+   y `DB/03_dato_prueba_c3.md`) y `python app.py`.
 Hecho cuando: `pip install -r requirements.txt` OK, `python app.py` levanta y
 /health responde JSON con redis=up (WSL); `docker-compose config` válido.
 Prohíbo: tocar DB/, .env, crear endpoints CRUD o lógica Redis.
@@ -144,7 +145,7 @@ backend (contract-first):
 1. postman/taller_vehiculos.json: colección v2.1 en orden de video: health,
    GET lista, GET Avión (C1 15s), GET Camión (C4 0), GET Barco (C2 20s),
    PUT Barco, GET Barco (miss post-invalidación), POST/GET Hidroavión (C3 40s,
-   body y secuencia fuente en `DB/03_dato_prueba_c3.txt` Parte C),
+   body y secuencia fuente en `DB/03_dato_prueba_c3.md` Parte C),
    DELETE Hidroavión, con tests que asertan `fuente` y `ttl_segundos`
    (15/20/40/0 según §0.4).
 2. postman/entorno_local.json: {{base_url}}=http://localhost:5000.
@@ -160,8 +161,8 @@ Rol: DBA/QA. Directorio: taller_Redis_Programacion/.
 Tareas (solo lectura + reporte, NO modificar seed):
 1. Requiere Mongo levantado (Docker o Atlas según README de W1-A; si no hay,
    repórtalo y NO bloquees: verifica solo sintaxis con mongosh --nodb si aplica).
-2. Ejecutar en orden `DB/01_seed_automoviles.js`, `DB/02_consultas_demo.txt`
-   y Parte A de `DB/03_dato_prueba_c3.txt`; verificar: 10 docs seed, índice único
+2. Ejecutar en orden `DB/01_seed_automoviles.js`, `DB/02_guia_integrante1.md`
+   (comandos mongosh de la sección D) y Parte A de `DB/03_dato_prueba_c3.md`; verificar: 10 docs seed, índice único
    nombre, matriz §4 de DB/02 = 15s Avión/Helicóptero, 20s Barco/Lancha/Cohete,
    0 Automóvil/Motocicleta/Camión/Bicicleta/Monopatín, 40s solo Hidroavión.
 3. Verificar que `wsl redis-cli ping` sigue en PONG.
