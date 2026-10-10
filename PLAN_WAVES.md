@@ -80,7 +80,7 @@ las cuatro condiciones y solo la de 40 segundos requiere un dato adicional"*.
 | 1:00–2:30 | Int. 2 | Estructura MongoDB + seed | Compass + `DB/04` (conteo y matriz) |
 | 2:30–4:30 | Int. 3 | CRUD completo en Postman | POST→GET→PUT→DELETE + `DB/05` |
 | 4:30–5:50 | **TÚ (Int. 1)** | Caché **C1** (`Aéreo`=5 → 15s) + expiración | `GET /vehiculos/Avión` ×2 (mongodb→redis), esperar 15s, vuelve a mongodb |
-| 5:50–6:50 | **TÚ (Int. 1)** | Caché **C4** (`Terrestre…`=22/25 → NO guarda, prioritaria) | `GET /vehiculos/Camión` ×2: siempre `mongodb`; explicar por qué |
+| 5:50–6:50 | **TÚ (Int. 1)** | Caché **C4** (`Terrestre…`=22 → NO guarda, prioritaria) | `POST Taxi` (201) + `GET` ×2: siempre `mongodb`/0 + `GET` nil en Redis; `DELETE` final |
 | 6:50–8:00 | Int. 2 | Caché **C2** (`Acuático`/`Espacial`=8 → 20s) + **invalidación PUT/DELETE** | `GET Barco`, `PUT`, `GET` (miss), `TTL` en Redis |
 | 8:00–9:20 | Int. 3 | Caché **C3** (`Acuático ligero`=15 → 40s) + expiración + `fuente` | `GET Hidroavión`, `TTL`, conclusiones |
 | 9:20–10:30 | Int. 3 + Tú | Conclusiones + GitHub/Moodle/entrega | Repo, `requirements.txt`, `.txt` Moodle |

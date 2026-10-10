@@ -1,241 +1,197 @@
 # Mi guía — Integrante 1 (C1 + C4 + presentación)
 
 **Mis bloques del video:** presentación (0:00–1:00) + caché **C1** `Avión` 15s
-(4:30–5:50) + caché **C4** `Camión` NO_CACHE (5:50–6:50).
-**Anexo final:** la condición C3 del Integrante 3, incluida aquí para que entiendas
-el proyecto completo (él la presenta; el archivo original sigue en `DB/03_dato_prueba_c3.md`).
-
-Solo necesitas **3 ventanas**: la app **Ubuntu** (Microsoft Store), una PowerShell
-y Postman. Más **Compass** para mirar MongoDB con ojos.
-- **Ubuntu**: consola Linux donde vive Redis. Aquí escribes `redis-cli ...` directo.
-- **PowerShell**: consola de Windows. Aquí arrancas la API con `python app.py`.
-- **Postman**: el programa con el que "consumes" la API (peticiones y respuestas).
-- **Compass**: ventana visual de MongoDB (ver bases, colecciones y documentos).
+(4:30–5:50) + caché **C4** `Taxi` NO_CACHE (5:50–6:50).
+Solo necesitas: app **Ubuntu**, una PowerShell, Postman y Compass.
 
 ---
 
-## Ventanas y consolas (qué es cada cosa)
+## 0. Cómo funciona el proyecto (para explicarlo en 1 minuto)
 
-- **PowerShell**: la consola azul de Windows. Aquí arrancas la API, corres el seed
-  y (si quieres) también sirve para Redis anteponiendo `wsl:`.
-- **Postman**: el programa con el que "consumes" la API (haces peticiones y ves respuestas).
-- **WSL/Ubuntu**: la app **Ubuntu** de Microsoft Store. Es un Linux dentro de
-  Windows donde corre Redis; cuando veas `redis-cli ...`, se escribe ahí tal cual.
+Archivos importantes y cómo se hablan entre ellos:
 
----
-
-## Paso 0 — Ir a la carpeta del proyecto (PowerShell)
-
-```powershell
-cd C:\Users\joans\Downloads\taller_programacion_redis\taller_Redis_Programacion
+```text
+Postman (tú pides) ──HTTP──▶ app.py (puerta Flask)
+                                │
+                ┌───────────────┼───────────────┐
+                ▼               ▼               ▼
+          config.py    routes/vehiculos.py   routes/vehiculos_cache.py
+          (lee .env:   (POST/GET lista/      (GET /vehiculos/<nombre>:
+           direcciones  PUT/DELETE)           pregunta a cache.py)
+           de Mongo y
+           Redis)               │               │
+                                ▼               ▼
+                          MongoDB:          Redis (WSL):
+                          automoviles.      clave vehiculo:<nombre>
+                          vehiculos         con tiempo de vida
+                          (datos reales)    (copia rápida)
 ```
 
-Todo lo de abajo se escribe en esa misma ventana.
+- **`app.py`**: arranca el servidor y declara las rutas. No guarda nada.
+- **`config.py`**: lee el `.env` (direcciones de Mongo y Redis).
+- **`routes/vehiculos.py`**: crea, lista, actualiza y borra (CRUD contra Mongo).
+- **`routes/vehiculos_cache.py` + `cache.py`**: al pedir UN vehículo, miran Redis
+  primero (`fuente: redis`); si no está, leen Mongo, lo guardan con `SETEX`
+  (guardar **con** segundos de vida) y responden `fuente: mongodb`.
+- **`cache.py → ttl_para`**: decide los segundos según `len(categoria)`:
+  `<=5`→15, `6-10`→20, `11-20`→40, `>20`→0 (no guardar, prioritaria).
 
-## Paso 1 — Encender Redis (app Ubuntu)
+## 1. Qué rutas existen y para qué sirve cada una
 
-Abre la app **Ubuntu** y escribe:
+Base: `http://localhost:5000` (en tu PC también vale `http://127.0.0.1:5000`).
+
+| Método + ruta | Para qué sirve |
+|---|---|
+| `GET /health` | "¿Estás vivo?" Responde `{"status":"ok","mongo":"up","redis":"up","db":"automoviles.vehiculos"}`: `mongo`/`redis` dicen si cada servicio responde; `db` dice qué base y colección se usa. (El 404 de `/` es normal: no hay página principal.) |
+| `GET /vehiculos` | Lista todos (la usa el Int. 3). |
+| `GET /vehiculos/<nombre>` | **Tus demos.** Devuelve el documento + `fuente` (`mongodb` = lo leyó de la base; `redis` = lo leyó del caché) + `ttl_segundos` (banda que le tocó; en HIT es lo que **queda**). |
+| `POST /vehiculos` | **Tu demo C4.** Crea con body JSON (los 4 campos). Responde `201` (o `409` si el nombre ya existe). |
+| `PUT` / `DELETE /vehiculos/<nombre>` | Las usa el Int. 2 (actualizar/borrar + invalidar caché). |
+
+## 2. Dos ejemplos directos de `taller_vehiculos.json` (así los verás)
+
+**Ejemplo 1 — petición GET (así pides el Avión):**
+
+```http
+GET http://localhost:5000/vehiculos/Avión
+```
+
+Sin body. La respuesta trae el documento más `"fuente"` y `"ttl_segundos"`.
+En la colección este es el request **"07 GET Avion 1er"**, que además trae tests
+que comprueban solos `fuente == "mongodb"` y `ttl_segundos == 15`.
+
+**Ejemplo 2 — petición POST (así se crea un vehículo):**
+
+```http
+POST http://localhost:5000/vehiculos
+Content-Type: application/json
+
+{"nombre": "PruebaCRUD", "categoria": "Aéreo", "peso_toneladas": 1, "descripcion": "Prueba CRUD."}
+```
+
+Pestaña **Body** → **raw** → **JSON**, pegas eso y **Send** → esperado `201`.
+En la colección es el request **"02 CRUD POST PruebaCRUD"**.
+
+---
+
+## 3. Arranque (hazlo una vez)
+
+En la app **Ubuntu**:
 
 ```bash
 sudo service redis-server start
+redis-cli ping            # -> PONG (Redis vivo)
 ```
 
-Si pide contraseña, es la de tu usuario de Ubuntu. Luego comprueba:
-
-```bash
-redis-cli ping
-```
-
-Tienes que ver `PONG`. Eso significa: *"Redis está vivo y escucha"*.
-Sin esto, nada de caché funciona.
-
-## Paso 2 — Arrancar la API (PowerShell)
+En PowerShell (carpeta del proyecto):
 
 ```powershell
-python app.py
+cd C:\Users\joans\Downloads\taller_programacion_redis\taller_Redis_Programacion
+python app.py             # -> Running on http://127.0.0.1:5000 (dejar abierto)
 ```
 
-Tienes que ver `Running on http://127.0.0.1:5000`. **Deja esta ventana abierta.**
-Si `python` no existe, usa `.\venv\Scripts\python.exe app.py` (hace lo mismo
-sin activar el entorno).
-
-> El 404 al abrir `http://127.0.0.1:5000/` en el navegador es normal: la app no
-> tiene página principal. Su "¿estás vivo?" es la ruta `/health` (paso 4).
-
-## Paso 3 — Dejar la base limpia (PowerShell + Ubuntu)
-
-En PowerShell, misma carpeta:
+En otra PowerShell (misma carpeta), seed limpio + sin caché vieja:
 
 ```powershell
-mongosh --file DB/01_seed_automoviles.js
+mongosh --file DB/01_seed_automoviles.js   # -> al final: 10
 ```
 
-Al final verás `10` (los 10 vehículos del taller) y los datos del `Avión`.
-Luego, en la app **Ubuntu**, borra restos de pruebas anteriores en Redis:
+En Ubuntu:
 
 ```bash
-redis-cli DEL "vehiculo:Avión"
+redis-cli DEL "vehiculo:Avión" "vehiculo:Taxi"   # -> 0, 1 o 2: parto limpio
 ```
 
-Verás `0` o `1`. Ambos valen: *"parto sin caché vieja"*.
+En Postman: **Import** → `postman/taller_vehiculos.json` + `entorno_local.json`
+→ entorno **Taller Local**. En Compass (opcional): conecta a
+`mongodb://localhost:27017` → `automoviles` → `vehiculos` (10 documents).
 
-## Paso 3b — Ver la base en Compass
+## 4. Presentación (0:00–1:00): `GET /health`
 
-Abre **Compass**, conecta a `mongodb://localhost:27017` y entra a
-`automoviles` → `vehiculos`: verás **10 documents**. En la barra **Filter**
-escribe `{"nombre": "Avión"}` y pulsa **Find**: su `categoria` es `"Aéreo"`
-(5 caracteres → TTL 15). Repite con `{"nombre": "Camión"}`:
-`categoria` `"Terrestre (motorizado)"` (22 caracteres → NO_CACHE).
-Esto es lo mismo que comprobarán tus GETs, pero visto en la base.
-
-## Paso 4 — Importar Postman y probar que todo vive (presentación 0:00–1:00)
-
-1. Abre Postman → botón **Import** → arrastra `postman/taller_vehiculos.json`
-   y `postman/entorno_local.json`.
-2. Arriba a la derecha elige el entorno **Taller Local**.
-3. Abre el request **"00 GET health"** y pulsa **Send**:
-
-```http
-GET http://localhost:5000/health
-```
-
-Respuesta esperada (código `200`):
+Request **"00 GET health"** → **Send** → `200`:
 
 ```json
 {"status": "ok", "mongo": "up", "redis": "up", "db": "automoviles.vehiculos"}
 ```
 
-**Qué decir (tienes ~1 minuto):** *"API REST en Flask; MongoDB guarda
-`automoviles.vehiculos` con 10 vehículos e índice único en `nombre`; Redis en
-WSL es el caché. Cada consulta a un vehículo responde el documento más
-`fuente` —`mongodb` o `redis`— y `ttl_segundos`. El TTL depende de la longitud
-de la **categoría**: hasta 5 caracteres, 15 segundos; 6 a 10, 20 segundos;
-11 a 20, 40 segundos; más de 20 no se guarda, con prioridad."*
+Di: *"Flask expone la API; MongoDB guarda 10 vehículos con índice único en
+`nombre`; Redis en WSL es el caché. Cada consulta responde `fuente` y
+`ttl_segundos`, y el TTL depende de la longitud de la categoría: hasta 5 son 15
+segundos; más de 20 no se guarda, con prioridad."*
 
----
+## 5. Demo C1 con GET — `Avión`, 15s (4:30–5:50)
 
-## Paso 5 — C1, primer GET = viene de Mongo (4:30–5:50)
+`"Aéreo"` mide 5 caracteres → banda `<= 5` → TTL 15.
 
-Request **"07 GET Avion 1er"** → **Send**:
+1. Request **"07 GET Avion 1er"** → **Send**:
+   `GET http://localhost:5000/vehiculos/Avión` → `200`
+   `{"fuente":"mongodb","ttl_segundos":15,...}`.
+   Di: *"Primer GET: MISS, viene de Mongo y se guarda en Redis."*
+2. Ubuntu: `redis-cli TTL "vehiculo:Avión"` → verás `15/14/13` (cuenta atrás).
+   `redis-cli GET "vehiculo:Avión"` → el JSON. Di: *"Almacenamiento demostrado."*
+3. Request **"08 GET Avion 2do"** → **Send** → `"fuente":"redis"`.
+   Di: *"Segundo GET: HIT, consulta desde caché."*
+4. Espera **16s** (cronómetro) → repite **07** → `"fuente":"mongodb"`.
+   Di: *"Expiró y volvió a Mongo: expiración automática demostrada."*
+5. Limpia: `redis-cli DEL "vehiculo:Avión"`.
 
-```http
-GET http://localhost:5000/vehiculos/Avión
-```
+## 6. Demo C4 con POST + GET — `Taxi`, no se guarda (5:50–6:50)
 
-Respuesta esperada (`200`, tests en verde):
+`"Terrestre (motorizado)"` mide 22 caracteres → supera 20 → **nunca se guarda**.
 
-```json
-{"nombre": "Avión", "categoria": "Aéreo", "fuente": "mongodb", "ttl_segundos": 15, ...}
-```
-
-**Por qué:** es la primera vez que se pide: no está en caché (MISS), la API lo
-lee de MongoDB y **lo guarda en Redis por 15 segundos**, porque `"Aéreo"` mide
-5 caracteres (`A-é-r-e-o`) y cae en la banda `<= 5`.
-
-## Paso 6 — Mira la clave con tus ojos en Redis
-
-```powershell
-redis-cli TTL "vehiculo:Avión"
-```
-
-Verás `15`, `14` o `13` (el número baja solo: es la cuenta atrás). Y:
-
-```powershell
-redis-cli GET "vehiculo:Avión"
-```
-
-Verás el JSON del Avión. **Esto prueba el almacenamiento en caché.**
-Di: *"La clave `vehiculo:Avión` existe con TTL 15."*
-
-## Paso 7 — C1, segundo GET = viene de Redis
-
-Request **"08 GET Avion 2do"** → **Send** (el mismo GET de arriba):
+1. Crea el dato (petición manual, pestaña Body → raw → JSON):
 
 ```http
-GET http://localhost:5000/vehiculos/Avión
+POST http://localhost:5000/vehiculos
+Content-Type: application/json
+
+{"nombre": "Taxi", "categoria": "Terrestre (motorizado)", "peso_toneladas": 1.4, "descripcion": "Taxi amarillo."}
 ```
 
-Respuesta esperada: `"fuente": "redis"` (el `ttl_segundos` será menor de 15:
-es lo que **queda**, no lo inicial). **Esto prueba la consulta desde caché.**
+Esperado `201`. Di: *"Creo un vehículo cuya categoría mide 22."*
 
-## Paso 8 — C1, expiración real en cámara
+2. `GET http://localhost:5000/vehiculos/Taxi` → `200`
+   `{"fuente":"mongodb","ttl_segundos":0,...}`.
+3. Repite el GET → otra vez `"fuente":"mongodb"`.
+4. Ubuntu: `redis-cli GET "vehiculo:Taxi"` → `(nil)` = *"esa clave jamás existió"*.
+   Di: *"Dos GET desde Mongo y nada en Redis: la regla prioritaria funciona
+   también con datos nuevos, no solo con el seed."*
+5. Limpieza obligatoria: `DELETE http://localhost:5000/vehiculos/Taxi` → `200`,
+   y `db.vehiculos.countDocuments()` → `10`. Sigue el Int. 2.
 
-Espera **16 segundos mirando un cronómetro** y repite el request **07**.
-Respuesta esperada: `"fuente": "mongodb"` otra vez.
-**Por qué:** los 15 segundos pasaron, Redis borró la clave solo y la API tuvo
-que volver a Mongo. Di: *"almacenamiento, consulta y expiración demostrados"*.
-Limpieza:
+## 7. Código que puedo explicar (si preguntan)
 
-```powershell
-redis-cli DEL "vehiculo:Avión"
-```
-
-## Paso 9 — C4, primer GET = viene de Mongo y con ttl 0 (5:50–6:50)
-
-Request **"09 GET Camion 1er"** → **Send**:
-
-```http
-GET http://localhost:5000/vehiculos/Camión
-```
-
-Respuesta esperada: `"fuente": "mongodb", "ttl_segundos": 0`.
-**Por qué:** `"Terrestre (motorizado)"` mide 22 caracteres. Supera 20, así que
-la regla prioritaria dice **no almacenar**: la API ni siquiera hace `SETEX`.
-
-## Paso 10 — C4, segundo GET = sigue en Mongo + prueba del vacío
-
-Request **"10 GET Camion 2do"** → **Send**: otra vez `"fuente": "mongodb"`.
-Y en PowerShell:
-
-```powershell
-redis-cli GET "vehiculo:Camión"
-```
-
-Verás `(nil)` = *"esa clave jamás existió"*.
-Di: *"Dos GET seguidos desde Mongo y nada en Redis: la prioridad funciona."*
-**Fin de tu parte.** Sigue el Integrante 2.
-
----
-
-## Cómo explicar el código (por si te preguntan)
-
-Solo necesitas esta función de `cache.py` (ábrela y muéstrala):
+Muestra `cache.py`:
 
 ```python
 def ttl_para(categoria: str) -> int:
-    n = len(categoria or "")   # len = cuántos caracteres mide el texto
+    n = len(categoria or "")   # len = cuántos caracteres mide
     if n > 20:
-        return 0               # más de 20 -> 0 = NO guardar (prioritaria)
+        return 0               # >20 -> 0 = NO guardar (mi caso C4: 22)
     if n <= 5:
-        return 15              # "Aéreo" mide 5 -> mi caso C1
+        return 15              # "Aéreo" = 5 -> mi caso C1
     if n <= 10:
         return 20
     return 40
 ```
 
-Explícala así: *"`len` cuenta caracteres. Si la categoría pasa de 20, devuelve 0
-y la API no guarda nada; si mide 5 o menos, devuelve 15 y Redis conserva el dato
-15 segundos."* El `GET` (`routes/vehiculos_cache.py`) hace esto: busca la clave
-`vehiculo:<nombre>` en Redis → si está, responde `fuente: redis`; si no, lee
-Mongo, guarda con `SETEX` (guardar **con** tiempo de vida) y responde
-`fuente: mongodb`. `TTL` es el tiempo que le queda a una clave; `DEL` la borra
-(eso hace el `PUT` del Integrante 2 para no mostrar datos viejos).
+Di: *"`len` cuenta caracteres. `Taxi` es categoría de 22: retorna 0 y la API
+jamás hace `SETEX`; `Avión` es de 5: retorna 15 y Redis lo conserva 15
+segundos."* `TTL` = lo que le queda a una clave; `DEL` = borrarla.
 
-## Si algo falla en vivo
+## 8. Si falla en vivo
 
-- Todo sale `redis` desde el inicio → claves viejas: `redis-cli DEL "vehiculo:Avión"`.
-- `/health` dice `redis: down` → repite el paso 1.
-- `409` en un POST → ese dato ya existe: normal, sigue con el GET.
+- Todo sale `redis` al empezar → `redis-cli DEL "vehiculo:Avión" "vehiculo:Taxi"`.
+- `redis: down` → `sudo service redis-server start` en Ubuntu.
+- `409` en el POST del Taxi → ya existe de un ensayo: bórralo con el `DELETE` y repite.
 
 ---
 
-## Anexo — C3 del Integrante 3 (para que domines el cuadro completo)
+## Anexo — C3 del Integrante 3 (lo presenta él; aquí para tu dominio total)
 
-**Idea en una frase:** la banda 11–20 caracteres (TTL 40s) no existe en el seed
-(las categorías miden 5, 8, 22 o 25), así que el Int. 3 crea **un** documento con
-la propia API y demuestra su caché. Esto es lo que él presenta (8:00–9:20):
-
-1. **Crea el dato** (Postman **"16 POST Hidroavion"**):
+La banda 11–20 (TTL 40s) no existe en el seed (categorías de 5, 8, 22, 25).
+El Int. 3 crea **un** documento vía POST y demuestra su caché
+(detalle: `DB/03_dato_prueba_c3.md`):
 
 ```http
 POST http://localhost:5000/vehiculos
@@ -244,14 +200,6 @@ Content-Type: application/json
 {"nombre":"Hidroavión","categoria":"Acuático ligero","peso_toneladas":4,"descripcion":"Avión que acuatiza."}
 ```
 
-Esperado `201`. Por qué 40s: `"Acuático ligero"` mide 15 caracteres (8 + espacio
-+ 6… compruébalo: cae entre 11 y 20). Equivalente en mongosh (Parte A del `03`):
-`db.vehiculos.insertOne({...})` con ese mismo documento.
-
-2. **MISS:** `GET /vehiculos/Hidroavión` → `"fuente":"mongodb","ttl_segundos":40`.
-3. **Redis:** `redis-cli TTL "vehiculo:Hidroavión"` → 38–40.
-4. **HIT:** mismo GET → `"fuente":"redis"`.
-5. **Expiración (estrategia de video, 40s es largo):** muestra el TTL restante,
-   anuncia corte *"tras 40 segundos…"* y muestra el GET final → `"fuente":"mongodb"`.
-6. **Limpieza:** `DELETE /vehiculos/Hidroavión` (request 19) y
-   `db.vehiculos.countDocuments()` → debe volver a `10`.
+`"Acuático ligero"` = 15 caracteres → TTL 40. Luego:
+`GET /vehiculos/Hidroavión` → `mongodb`/40 → `redis-cli TTL` (38–40) →
+mismo GET → `redis` → (esperar 41s) → `mongodb` → `DELETE` (vuelve a 10).
