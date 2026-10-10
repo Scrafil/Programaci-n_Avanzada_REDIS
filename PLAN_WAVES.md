@@ -3,8 +3,11 @@
 > Alcance del PDF: BD `automoviles`, CRUD Flask verificado en Postman, caché Redis con 4
 > condiciones + invalidación, repo GitHub, video YouTube 8–12 min, entrega `.txt` en Moodle.
 > Venv ya creado (`python -m venv venv`, Python 3.13.14).
-> Estado verificado 2026-10-09: Redis ✅ ACTIVO en WSL (`wsl redis-cli ping` → PONG) ·
-> `mongosh` 2.7.0 OK pero **sin servidor Mongo local** (ECONNREFUSED; Docker apagado).
+> Estado verificado 2026-10-09: Redis ✅ ACTIVO en WSL (`redis-cli ping` → PONG) ·
+> MongoDB = servicio Windows local en marcha (Docker apagado, no se usa).
+> Herramientas oficiales del equipo: **MongoDB Compass** (ver MongoDB),
+> **app Ubuntu de Microsoft Store** (`redis-cli` directo, sin `wsl`),
+> **Postman** (colección `postman/`). `mongosh --file` solo para correr el seed.
 
 ---
 
@@ -74,7 +77,7 @@ las cuatro condiciones y solo la de 40 segundos requiere un dato adicional"*.
 | Bloque (min) | Dueño | Tema | Demo en vivo |
 |---|---|---|---|
 | 0:00–1:00 | **TÚ (Int. 1)** | Presentación, objetivo, arquitectura (Flask→Mongo/Redis WSL) | Diagrama / `/health` |
-| 1:00–2:30 | Int. 2 | Estructura MongoDB + seed | `mongosh` + `DB/04` (agregaciones y matriz) |
+| 1:00–2:30 | Int. 2 | Estructura MongoDB + seed | Compass + `DB/04` (conteo y matriz) |
 | 2:30–4:30 | Int. 3 | CRUD completo en Postman | POST→GET→PUT→DELETE + `DB/05` |
 | 4:30–5:50 | **TÚ (Int. 1)** | Caché **C1** (`Aéreo`=5 → 15s) + expiración | `GET /vehiculos/Avión` ×2 (mongodb→redis), esperar 15s, vuelve a mongodb |
 | 5:50–6:50 | **TÚ (Int. 1)** | Caché **C4** (`Terrestre…`=22/25 → NO guarda, prioritaria) | `GET /vehiculos/Camión` ×2: siempre `mongodb`; explicar por qué |
@@ -130,7 +133,8 @@ Tareas:
    compose es alternativa) con volúmenes y puertos 27017/6379.
 5. .gitignore: venv/, .env, __pycache__/.
 6. README.md borrador: venv+pip, cómo arrancar Redis WSL, Docker vs Atlas,
-   seed y demos (`mongosh --file DB/01_seed_automoviles.js`, guías
+   seed y demos (`mongosh --file DB/01_seed_automoviles.js` desde la terminal
+   Ubuntu o PowerShell, guías
    `DB/02_guia_integrante1.md`, `DB/04_guia_integrante2.md`, `DB/05_guia_integrante3.md`
    y `DB/03_dato_prueba_c3.md`) y `python app.py`.
 Hecho cuando: `pip install -r requirements.txt` OK, `python app.py` levanta y
@@ -161,11 +165,12 @@ Rol: DBA/QA. Directorio: taller_Redis_Programacion/.
 Tareas (solo lectura + reporte, NO modificar seed):
 1. Requiere Mongo levantado (Docker o Atlas según README de W1-A; si no hay,
    repórtalo y NO bloquees: verifica solo sintaxis con mongosh --nodb si aplica).
-2. Ejecutar en orden `DB/01_seed_automoviles.js`, `DB/02_guia_integrante1.md`
-   (comandos mongosh de la sección D) y Parte A de `DB/03_dato_prueba_c3.md`; verificar: 10 docs seed, índice único
+2. Ejecutar el seed (`DB/01_seed_automoviles.js`) y la Parte A de `DB/03_dato_prueba_c3.md`;
+   verificar en **Compass** (conexión `mongodb://localhost:27017`, BD `automoviles`):
+   10 docs, índice único `nombre`, matriz = 15s Avión/Helicóptero,
    nombre, matriz §4 de DB/02 = 15s Avión/Helicóptero, 20s Barco/Lancha/Cohete,
    0 Automóvil/Motocicleta/Camión/Bicicleta/Monopatín, 40s solo Hidroavión.
-3. Verificar que `wsl redis-cli ping` sigue en PONG.
+3. Verificar que `redis-cli ping` (app Ubuntu) sigue en PONG.
 Hecho cuando: reporte OK/FAIL por check + salida de las agregaciones.
 Prohíbo: crear/editar cualquier archivo del repo.
 ```
@@ -191,7 +196,8 @@ Prohíbo: tocar cache.py, postman/, DB/, .env.
 ### 🤖 Agente W2-CACHE «Redis» — archivos: `cache.py` (+ `GET /vehiculos/<nombre>` en `routes/vehiculos_cache.py` o función usada por app.py)
 ```text
 Rol: Backend/Caché. Contrato §0.3/§0.4 inamovible. Dueño de TODA la lógica Redis.
-Redis vive en WSL (localhost:6379); verifica con `wsl redis-cli ping`.
+Redis vive en WSL (localhost:6379); se opera desde la app Ubuntu con `redis-cli`
+(desde PowerShell vale anteponer `wsl:` `wsl redis-cli ping`).
 Implementa en cache.py: ttl_para(categoria) EXACTO al §0.3,
 get_vehiculo(nombre, mongo_getter) -> (doc, fuente, ttl) con flujo:
 GET vehiculo:<nombre> -> HIT: fuente=redis (+TTL restante) |
@@ -200,8 +206,8 @@ fuente=mongodb SIN guardar; si no SETEX JSON + fuente=mongodb.
 invalidar(nombre) -> DEL (llamado por PUT/DELETE).
 Exponer GET /vehiculos/<nombre>: doc + fuente + ttl_segundos.
 Guion a verificar: 1er GET Avión=mongodb, 2do=redis, tras 15s=mongodb;
-2 GET Camión=mongodb siempre; documenta cómo ver TTL (respuesta + `wsl redis-cli TTL`)
-para el video.
+2 GET Camión=mongodb siempre; documenta cómo ver TTL (respuesta + `redis-cli TTL`
+en la app Ubuntu) para el video.
 Hecho cuando: matriz C1=15/C2=20/C3=40/C4=0 verificada con tiempos REALES
 (cronometrados ±2s) + invalidación PUT/DELETE demostrada.
 Prohíbo: tocar el CRUD de W2-API salvo el punto de invalidación acordado,
@@ -220,7 +226,7 @@ en PONG (`wsl sudo service redis-server start` si hizo falta).
    TODA la colección Postman y anotar fuente/ttl de cada GET (esperado §0.4). 2. QA de tiempos reales: 15s (Avión),
    20s (Barco), 40s (Hidroavión: vale mostrar TTL restante + 2º GET), C4
    (2×Camión=mongodb) + invalidación PUT/DELETE; tabla PASS/FAIL con segundos.
-   3. README final: venv+pip, Redis WSL, Docker/Atlas, seed mongosh, run, orden
+   3. README final: venv+pip, Redis en Ubuntu, Mongo local + Compass, Docker/Atlas, seed mongosh, run, orden
    Postman, tabla §0.4 + frase de defensa del identificador, integrantes y
    enlaces (placeholders GitHub/YouTube). 4. GitHub público sin .env
    (solo .env.example). 5. entrega_moodle.txt: nombres + 2 enlaces.

@@ -5,16 +5,22 @@
 **Anexo final:** la condición C3 del Integrante 3, incluida aquí para que entiendas
 el proyecto completo (él la presenta; el archivo original sigue en `DB/03_dato_prueba_c3.md`).
 
-Solo necesitas **2 ventanas**: una PowerShell y Postman.
+Solo necesitas **3 ventanas**: la app **Ubuntu** (Microsoft Store), una PowerShell
+y Postman. Más **Compass** para mirar MongoDB con ojos.
+- **Ubuntu**: consola Linux donde vive Redis. Aquí escribes `redis-cli ...` directo.
+- **PowerShell**: consola de Windows. Aquí arrancas la API con `python app.py`.
+- **Postman**: el programa con el que "consumes" la API (peticiones y respuestas).
+- **Compass**: ventana visual de MongoDB (ver bases, colecciones y documentos).
 
 ---
 
 ## Ventanas y consolas (qué es cada cosa)
 
-- **PowerShell**: la consola azul de Windows. Aquí arrancas la API, Mongo y Redis.
+- **PowerShell**: la consola azul de Windows. Aquí arrancas la API, corres el seed
+  y (si quieres) también sirve para Redis anteponiendo `wsl:`.
 - **Postman**: el programa con el que "consumes" la API (haces peticiones y ves respuestas).
-- **WSL/Ubuntu**: NO necesitas abrirlo aparte. Cuando veas un comando que empieza
-  con `wsl`, significa "ejecuta esto dentro del Ubuntu"; PowerShell lo reenvía solo.
+- **WSL/Ubuntu**: la app **Ubuntu** de Microsoft Store. Es un Linux dentro de
+  Windows donde corre Redis; cuando veas `redis-cli ...`, se escribe ahí tal cual.
 
 ---
 
@@ -26,16 +32,18 @@ cd C:\Users\joans\Downloads\taller_programacion_redis\taller_Redis_Programacion
 
 Todo lo de abajo se escribe en esa misma ventana.
 
-## Paso 1 — Encender Redis (PowerShell)
+## Paso 1 — Encender Redis (app Ubuntu)
 
-```powershell
-wsl sudo service redis-server start
+Abre la app **Ubuntu** y escribe:
+
+```bash
+sudo service redis-server start
 ```
 
 Si pide contraseña, es la de tu usuario de Ubuntu. Luego comprueba:
 
-```powershell
-wsl redis-cli ping
+```bash
+redis-cli ping
 ```
 
 Tienes que ver `PONG`. Eso significa: *"Redis está vivo y escucha"*.
@@ -54,20 +62,31 @@ sin activar el entorno).
 > El 404 al abrir `http://127.0.0.1:5000/` en el navegador es normal: la app no
 > tiene página principal. Su "¿estás vivo?" es la ruta `/health` (paso 4).
 
-## Paso 3 — Dejar la base limpia (otra PowerShell, en la misma carpeta)
+## Paso 3 — Dejar la base limpia (PowerShell + Ubuntu)
+
+En PowerShell, misma carpeta:
 
 ```powershell
 mongosh --file DB/01_seed_automoviles.js
 ```
 
 Al final verás `10` (los 10 vehículos del taller) y los datos del `Avión`.
-Luego borra restos de pruebas anteriores en Redis:
+Luego, en la app **Ubuntu**, borra restos de pruebas anteriores en Redis:
 
-```powershell
-wsl redis-cli DEL "vehiculo:Avión"
+```bash
+redis-cli DEL "vehiculo:Avión"
 ```
 
 Verás `0` o `1`. Ambos valen: *"parto sin caché vieja"*.
+
+## Paso 3b — Ver la base en Compass
+
+Abre **Compass**, conecta a `mongodb://localhost:27017` y entra a
+`automoviles` → `vehiculos`: verás **10 documents**. En la barra **Filter**
+escribe `{"nombre": "Avión"}` y pulsa **Find**: su `categoria` es `"Aéreo"`
+(5 caracteres → TTL 15). Repite con `{"nombre": "Camión"}`:
+`categoria` `"Terrestre (motorizado)"` (22 caracteres → NO_CACHE).
+Esto es lo mismo que comprobarán tus GETs, pero visto en la base.
 
 ## Paso 4 — Importar Postman y probar que todo vive (presentación 0:00–1:00)
 
@@ -116,13 +135,13 @@ lee de MongoDB y **lo guarda en Redis por 15 segundos**, porque `"Aéreo"` mide
 ## Paso 6 — Mira la clave con tus ojos en Redis
 
 ```powershell
-wsl redis-cli TTL "vehiculo:Avión"
+redis-cli TTL "vehiculo:Avión"
 ```
 
 Verás `15`, `14` o `13` (el número baja solo: es la cuenta atrás). Y:
 
 ```powershell
-wsl redis-cli GET "vehiculo:Avión"
+redis-cli GET "vehiculo:Avión"
 ```
 
 Verás el JSON del Avión. **Esto prueba el almacenamiento en caché.**
@@ -148,7 +167,7 @@ que volver a Mongo. Di: *"almacenamiento, consulta y expiración demostrados"*.
 Limpieza:
 
 ```powershell
-wsl redis-cli DEL "vehiculo:Avión"
+redis-cli DEL "vehiculo:Avión"
 ```
 
 ## Paso 9 — C4, primer GET = viene de Mongo y con ttl 0 (5:50–6:50)
@@ -169,7 +188,7 @@ Request **"10 GET Camion 2do"** → **Send**: otra vez `"fuente": "mongodb"`.
 Y en PowerShell:
 
 ```powershell
-wsl redis-cli GET "vehiculo:Camión"
+redis-cli GET "vehiculo:Camión"
 ```
 
 Verás `(nil)` = *"esa clave jamás existió"*.
@@ -204,7 +223,7 @@ Mongo, guarda con `SETEX` (guardar **con** tiempo de vida) y responde
 
 ## Si algo falla en vivo
 
-- Todo sale `redis` desde el inicio → claves viejas: `wsl redis-cli DEL "vehiculo:Avión"`.
+- Todo sale `redis` desde el inicio → claves viejas: `redis-cli DEL "vehiculo:Avión"`.
 - `/health` dice `redis: down` → repite el paso 1.
 - `409` en un POST → ese dato ya existe: normal, sigue con el GET.
 
@@ -230,7 +249,7 @@ Esperado `201`. Por qué 40s: `"Acuático ligero"` mide 15 caracteres (8 + espac
 `db.vehiculos.insertOne({...})` con ese mismo documento.
 
 2. **MISS:** `GET /vehiculos/Hidroavión` → `"fuente":"mongodb","ttl_segundos":40`.
-3. **Redis:** `wsl redis-cli TTL "vehiculo:Hidroavión"` → 38–40.
+3. **Redis:** `redis-cli TTL "vehiculo:Hidroavión"` → 38–40.
 4. **HIT:** mismo GET → `"fuente":"redis"`.
 5. **Expiración (estrategia de video, 40s es largo):** muestra el TTL restante,
    anuncia corte *"tras 40 segundos…"* y muestra el GET final → `"fuente":"mongodb"`.
