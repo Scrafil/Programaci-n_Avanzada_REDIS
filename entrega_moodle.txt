@@ -1,7 +1,7 @@
 TALLER Flask + MongoDB + Redis — entrega Moodle
 Integrantes:
-1. <nombre completo 1>
-2. <nombre completo 2>
-3. <nombre completo 3>
-Repositorio GitHub: <url>
-Video YouTube: <url>
+1. JOAN SAMUEL ANACONA
+2. NICOLÁS MUESES
+3. ILIAN MAURICIO GONZALES
+Repositorio GitHub: -----
+Video YouTube: ------

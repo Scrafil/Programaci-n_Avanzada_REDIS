@@ -1,7 +1,5 @@
 // ============================================================
-// DB/01_seed_automoviles.js — Creación de la BD en MongoDB (solo NoSQL)
-// Ejecutar: mongosh --file DB/01_seed_automoviles.js
-// O pegar bloque por bloque en mongosh (misma sintaxis).
+// Creación de la BD en MongoDB (solo NoSQL)
 // ============================================================
 
 use automoviles;
@@ -26,3 +24,5 @@ db.vehiculos.createIndex({ nombre: 1 }, { unique: true });
 db.vehiculos.countDocuments();
 
 db.vehiculos.findOne({ nombre: "Avión" }, { _id: 0 });
+
+
