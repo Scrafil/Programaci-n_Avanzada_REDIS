@@ -107,8 +107,3 @@ E2E_SLOW=1 python -m unittest   # + expiración real C1 (~16s)
 | C3 `Hidroavión` | POST 201, MISS mongodb/40, `TTL`=40, HIT redis, tras espera 43.0s → mongodb, DELETE |
 | Estado final | 10 docs, 0 claves `vehiculo:*` |
 
-## 9. Equipo y entrega
-
-- Integrantes: _pendiente (3)_.
-- GitHub: _pendiente_ · Video YouTube (8–12 min): _pendiente_.
-- Moodle: un `.txt` con nombres + ambos enlaces (`entrega_moodle.txt` como plantilla).

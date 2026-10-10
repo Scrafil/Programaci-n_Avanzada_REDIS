@@ -1,9 +1,3 @@
-"""GET /vehiculos/<nombre> con caché Redis — dueño: W2-CACHE.
-
-W2-API NO debe implementar este GET (ver PLAN_WAVES.md Wave 2);
-W2-API sí implementa POST/lista/PUT/DELETE en routes/vehiculos.py.
-"""
-
 from flask import Blueprint, jsonify
 from pymongo import MongoClient
 

@@ -1,15 +1,3 @@
-"""Capa de caché Redis — dueño: W2-CACHE.
-
-Contrato inamovible (PLAN_WAVES.md §0.3/§0.4):
-- CAMPO_IDENTIFICADOR = "categoria" (TTL según len(categoria)).
-- Clave: `vehiculo:<nombre>` (búsqueda por nombre).
-- Valor: JSON del documento (sin _id). SETEX con el TTL.
-- TTL 15/20/40/0 por len(categoria); >20 prioritaria = NO guardar.
-- `fuente="redis"` solo si hubo HIT; si no, Mongo + SETEX (si TTL > 0).
-
-PUT/DELETE (W2-API) deben llamar a `invalidar(nombre)` en try/except.
-"""
-
 import json
 
 import redis as redis_lib
@@ -34,7 +22,6 @@ _client = None
 
 
 def get_client():
-    """Singleton perezoso de Redis (WLS: localhost:6379 o REDIS_URL)."""
     global _client
     if _client is None:
         if config.REDIS_URL:
@@ -57,14 +44,7 @@ def clave(nombre: str) -> str:
 
 
 def get_vehiculo(nombre, mongo_getter):
-    """Flujo GET con caché.
 
-    Returns (doc | None, fuente | None, ttl:int).
-    - HIT: (doc, "redis", ttl_restante)
-    - MISS con doc: (doc, "mongodb", ttl) + SETEX si ttl > 0
-    - MISS sin doc: (None, None, 0) -> la ruta responde 404
-    - Redis caído: degradado a Mongo sin romper (fuente mongodb).
-    """
     key = clave(nombre)
     try:
         raw = get_client().get(key)
@@ -108,7 +88,7 @@ def get_vehiculo(nombre, mongo_getter):
 
 
 def invalidar(nombre) -> int:
-    """DEL vehiculo:<nombre>. Llamado por PUT/DELETE. Nunca lanza."""
+
     try:
         return int(get_client().delete(clave(nombre)))
     except Exception:
