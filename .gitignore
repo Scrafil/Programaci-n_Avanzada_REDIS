@@ -2,3 +2,9 @@ venv/
 .env
 __pycache__/
 *.pyc
+# Guías internas por integrante (no se publican en GitHub)
+DB/02_guia_integrante1.md
+DB/03_dato_prueba_c3.md
+DB/04_guia_integrante2.md
+DB/05_guia_integrante3.md
+PLAN_WAVES.md
